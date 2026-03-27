@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile — PlanIt</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/css/variables.css">
+  <link rel="stylesheet" href="/src/css/global.css">
+  <link rel="stylesheet" href="/src/css/profile.css">
+</head>
+<body>
+  
+  <div id="cursor"></div>
+  <div id="cursor-ring"></div>
+
+  <!-- NAVIGATION -->
+  <nav class="navbar">
+    <a href="/" class="nav-logo">PLAN<span>IT</span></a>
+    <ul class="nav-links">
+      <li><a href="/">Explore</a></li>
+      <li><a href="/profile.html" class="active">My Trips</a></li>
+      <li><a href="#" id="logout-btn" class="nav-btn-outline">Sign Out</a></li>
+    </ul>
+  </nav>
+
+  <main class="profile-main">
+    <header class="profile-header">
+      <div class="user-info">
+        <div class="avatar" id="user-avatar">?</div>
+        <div>
+          <h1 class="user-name" id="user-name">Loading...</h1>
+          <p class="user-email" id="user-email">...</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="dashboard-layout">
+      <aside class="dashboard-sidebar glass-panel">
+        <h3 class="sidebar-title">TRIP HISTORY</h3>
+        <ul class="filter-list">
+          <li class="active" data-filter="all">All Trips</li>
+          <li data-filter="upcoming">Upcoming</li>
+          <li data-filter="completed">Completed</li>
+          <li data-filter="cancelled">Cancelled</li>
+        </ul>
+      </aside>
+
+      <section class="trips-container">
+        <div id="trips-list" class="trips-grid">
+          <!-- Trips injected here -->
+        </div>
+        
+        <div id="empty-state" class="hidden empty-state glass-panel">
+          <h2>No trips found</h2>
+          <p>You haven't planned any trips in this category yet.</p>
+          <a href="/" class="btn-primary mt-4" style="display:inline-flex;">PLAN A TRIP</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ITINERARY MODAL -->
+  <div id="itinerary-modal" class="modal-overlay hidden">
+    <div class="modal-content glass-panel">
+      <div class="modal-header">
+        <h2 id="modal-title">Trip Details</h2>
+        <button id="close-modal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="status-changer mb-4">
+          <label class="status-label">Update Status:</label>
+          <select id="status-select" class="status-select">
+            <option value="upcoming">Upcoming</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div id="modal-items" class="modal-items-grid"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="delete-trip-btn" class="btn-danger">DELETE TRIP</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/js/profile.js"></script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlanIt — AI Travel Explorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/css/variables.css">
+  <link rel="stylesheet" href="/src/css/global.css">
+  <link rel="stylesheet" href="/src/css/landing.css">
+</head>
+<body>
+  
+  <div id="cursor"></div>
+  <div id="cursor-ring"></div>
+
+  <!-- NAVIGATION -->
+  <nav class="navbar">
+    <a href="/" class="nav-logo">PLAN<span>IT</span></a>
+    <div class="nav-right-container">
+      <div class="weather-pill" id="weatherPill">
+        <div class="dot" id="weatherDot"></div>
+        <span id="weatherLabel" class="hide-mobile">☀ 22°C</span>
+        <span class="weather-badge" id="weatherBadge">SOLAR</span>
+        <div class="weather-switcher glass-panel" id="weatherSwitcher">
+          <div class="weather-opt" data-state="SOLAR"><div class="swatch" style="background:#F5A623"></div> ☀ Solar — Sunny</div>
+          <div class="weather-opt" data-state="RAIN"><div class="swatch" style="background:#4A90D9"></div> 🌧 Rain — Rainy</div>
+          <div class="weather-opt" data-state="FROST"><div class="swatch" style="background:#C8E6F5"></div> ❄ Frost — Snowy</div>
+          <div class="weather-opt" data-state="MIST"><div class="swatch" style="background:#8A9BA8"></div> 🌫 Mist — Cloudy</div>
+          <div class="weather-opt" data-state="STORM"><div class="swatch" style="background:#9B59B6"></div> ⚡ Storm — Thunder</div>
+        </div>
+      </div>
+
+      <ul class="nav-links" id="navLinks">
+        <li><a href="/" class="active">Explore</a></li>
+        <li><a href="/profile.html">My Trips</a></li>
+        <!-- Shown when logged OUT -->
+        <li id="nav-signin-li"><a href="/auth.html" class="nav-btn-outline" id="nav-signin-btn">Sign In</a></li>
+        <!-- Shown when logged IN -->
+        <li id="nav-profile-li" class="hidden">
+          <div class="nav-avatar-wrap" id="nav-avatar-wrap">
+            <button class="nav-avatar-btn" id="nav-avatar-btn" aria-label="Profile menu">
+              <span class="nav-avatar-initials" id="nav-avatar-initials">?</span>
+            </button>
+            <div class="nav-dropdown glass-panel" id="nav-dropdown">
+              <div class="nav-dropdown-user" id="nav-dropdown-email">user@email.com</div>
+              <hr class="nav-dropdown-divider">
+              <a href="/profile.html" class="nav-dropdown-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                My Trips
+              </a>
+              <button class="nav-dropdown-item nav-signout-btn" id="nav-signout-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </li>
+      </ul>
+
+      <button class="hamburger" id="hamburger" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <canvas id="weatherCanvas" aria-hidden="true"></canvas>
+  <div id="themeOverlay"></div>
+
+  <!-- LANDING HERO -->
+  <main class="landing-main">
+    <section class="hero-section">
+      <div class="hero-bg-glow"></div>
+      <div class="hero-content">
+        <div class="hero-eyebrow">AI POWERED ITINERARY PLANNER</div>
+        <h1 class="hero-title">DESIGN<br><span class="text-accent">YOUR ESCAPE</span></h1>
+        <p class="hero-sub">Enter your destination, set your dates, and let our AI craft the perfect trip with famous spots, stays, and restaurants.</p>
+        
+        <form id="trip-planner-form" class="trip-form glass-panel">
+          <div class="form-group destination-group">
+            <label for="destination">Where to?</label>
+            <input type="text" id="destination" name="destination" placeholder="e.g. Bangalore, New Delhi, Mysore..." required autocomplete="off">
+            <button type="button" class="location-btn" id="use-location-btn" title="Use current location">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+            </button>
+          </div>
+          
+          <div class="form-row dates-row">
+            <div class="form-group flex-1">
+              <label for="startDate">Start Date</label>
+              <input type="date" id="startDate" name="startDate">
+            </div>
+            <div class="form-group flex-1">
+              <label for="endDate">End Date</label>
+              <input type="date" id="endDate" name="endDate">
+            </div>
+          </div>
+          
+          <div class="form-separator">AND</div>
+
+          <div class="form-group">
+            <label for="numPeople">Number of Travelers</label>
+            <input type="number" id="numPeople" name="numPeople" min="1" max="50" value="2" placeholder="e.g. 2, 4">
+          </div>
+          
+          <button type="submit" class="btn-primary w-full mt-4" id="lets-go-btn">
+            LET'S GO <span class="arrow">→</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- FEATURED SPOTS -->
+    <section class="featured-section section-container mt-12">
+      <h2 class="section-title">FEATURED <span class="text-accent">DESTINATIONS</span></h2>
+      <div class="featured-grid">
+        <div class="featured-card glass-panel" data-dest="Bangalore, India">
+          <img src="https://images.unsplash.com/photo-1596176530529-78163a4f7af2?q=80&w=600" alt="Bangalore">
+          <div class="featured-info">
+            <h3>Bangalore, India</h3>
+            <p>Gardens, Palaces & Craft Beer</p>
+          </div>
+        </div>
+        <div class="featured-card glass-panel" data-dest="New Delhi, India">
+          <img src="https://images.unsplash.com/photo-1585123334904-845d60e97b29?q=80&w=800" alt="New Delhi">
+          <div class="featured-info">
+            <h3>New Delhi, India</h3>
+            <p>Forts, Monuments & Fine Dining</p>
+          </div>
+        </div>
+        <div class="featured-card glass-panel" data-dest="Mysore, Karnataka">
+          <img src="https://images.unsplash.com/photo-1620050860533-31742468728b?q=80&w=800" alt="Mysore">
+          <div class="featured-info">
+            <h3>Mysore, Karnataka</h3>
+            <p>Palaces, Hills & Butter Dosas</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+
+
+  <script type="module" src="/src/js/atmospheric.js"></script>
+  <script type="module" src="/src/js/main.js"></script>
+</body>
+</html>

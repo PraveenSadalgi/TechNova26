@@ -1,0 +1,1919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATMOSPHERIC — Travel Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent: #F5A623;
+    --accent-dim: rgba(245,166,35,0.15);
+    --bg: #0a0a0a;
+    --bg2: #111111;
+    --bg3: #1a1a1a;
+    --text: #f0ece4;
+    --muted: #666;
+    --border: #222;
+
+    /* Weather Tokens (soul of the app) */
+    --weather-accent: #F5A623;
+    --weather-bg-primary: #0a0a0a;
+    --weather-bg-secondary: #111111;
+    --weather-text-primary: #f0ece4;
+    --weather-text-muted: #666;
+    --particle-density: 120;
+    --particle-speed: 1;
+    --transition-duration: 1.2s;
+    --trans: var(--transition-duration) cubic-bezier(0.4,0,0.2,1);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* CUSTOM CURSOR */
+  #cursor {
+    position: fixed;
+    width: 8px; height: 8px;
+    background: var(--accent);
+    pointer-events: none;
+    z-index: 9999;
+    transition: transform 0.15s, opacity 0.15s;
+    mix-blend-mode: difference;
+  }
+  #cursor-ring {
+    position: fixed;
+    width: 32px; height: 32px;
+    border: 1px solid var(--accent);
+    pointer-events: none;
+    z-index: 9998;
+    transition: transform 0.08s, width 0.2s, height 0.2s, opacity 0.2s;
+    opacity: 0.5;
+  }
+
+  /* CANVAS */
+  #weatherCanvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* WEATHER NAV VARS */
+  :root {
+    --nav-tint: rgba(245,166,35,0.08);
+    --nav-tint-border: rgba(245,166,35,0.2);
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    height: 56px;
+    background: var(--nav-tint);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border-bottom: 1px solid var(--nav-tint-border);
+    transition: background var(--trans), border-color var(--trans);
+  }
+
+  nav::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(8,8,8,0.65);
+    z-index: -1;
+  }
+
+  .nav-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 4px;
+    color: var(--text);
+    text-decoration: none;
+    transition: color var(--trans);
+  }
+  .nav-logo span { color: var(--accent); transition: color var(--trans); }
+
+  .nav-links {
+    display: flex;
+    gap: 0;
+    list-style: none;
+  }
+  .nav-links a {
+    display: block;
+    padding: 0 20px;
+    height: 56px;
+    line-height: 56px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+    position: relative;
+  }
+  .nav-links a.active { color: var(--text); }
+  .nav-links a.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 20px; right: 20px;
+    height: 1px;
+    background: var(--accent);
+    transition: background var(--trans);
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  .weather-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px 6px 10px;
+    border: 1px solid var(--nav-tint-border);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    background: rgba(0,0,0,0.3);
+  }
+  .weather-pill:hover { border-color: var(--accent); background: var(--accent-dim); }
+
+  /* Pulsing live dot */
+  .weather-pill .dot {
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+    box-shadow: 0 0 0 0 var(--accent);
+    animation: livePulse 2s infinite;
+    transition: background var(--trans), box-shadow var(--trans);
+  }
+  @keyframes livePulse {
+    0%   { box-shadow: 0 0 0 0 var(--accent); opacity: 1; }
+    60%  { box-shadow: 0 0 0 5px transparent; opacity: 0.8; }
+    100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
+  }
+
+  /* Weather state badge inside pill */
+  .weather-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 2px 6px;
+    margin-left: 4px;
+    opacity: 0.8;
+    transition: color var(--trans), border-color var(--trans);
+  }
+
+  /* Nav weather tint flash on change */
+  nav.weather-transition {
+    transition: background 0.05s, border-color 0.05s;
+  }
+
+  /* WEATHER SWITCHER */
+  .weather-switcher {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    min-width: 200px;
+    z-index: 200;
+    display: none;
+  }
+  .weather-switcher.open { display: block; }
+  .weather-opt {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-bottom: 1px solid var(--border);
+  }
+  .weather-opt:last-child { border-bottom: none; }
+  .weather-opt:hover { background: var(--bg3); }
+  .weather-opt .swatch { width: 10px; height: 10px; }
+
+  /* PAGES */
+  .page { display: none; padding-top: 56px; min-height: 100vh; position: relative; z-index: 10; }
+  .page.active { display: block; }
+
+  /* ===== EXPLORE PAGE ===== */
+  .hero {
+    height: calc(100vh - 56px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 32px;
+    text-align: center;
+    position: relative;
+  }
+
+  .hero-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.2s forwards;
+  }
+
+  .hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(64px, 12vw, 160px);
+    line-height: 0.9;
+    letter-spacing: 2px;
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.4s forwards;
+  }
+  .hero-title .line2 { color: var(--accent); }
+
+  .hero-sub {
+    font-size: 15px;
+    color: var(--muted);
+    max-width: 420px;
+    line-height: 1.6;
+    margin-bottom: 48px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.6s forwards;
+  }
+
+  .search-wrap {
+    width: 100%;
+    max-width: 560px;
+    position: relative;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.8s forwards;
+  }
+  .search-input {
+    width: 100%;
+    padding: 16px 52px 16px 20px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-bottom: 2px solid var(--accent);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input::placeholder { color: var(--muted); }
+  .search-input:focus { border-color: var(--accent); }
+  .search-icon {
+    position: absolute;
+    right: 16px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 18px;
+  }
+
+  .suggestions {
+    position: absolute;
+    top: 100%; left: 0; right: 0;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-top: none;
+    z-index: 50;
+    display: none;
+  }
+  .suggestions.open { display: block; }
+  .suggestion-item {
+    padding: 12px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover { background: var(--bg3); }
+  .suggestion-item .country { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    animation: fadeUp 0.8s 1.2s forwards;
+  }
+  .scroll-arrow { width: 1px; height: 40px; background: var(--border); position: relative; overflow: hidden; }
+  .scroll-arrow::after { content: ''; position: absolute; top: -40px; left: 0; width: 1px; height: 40px; background: var(--accent); animation: scrollLine 1.8s infinite; }
+  @keyframes scrollLine { 0%{top:-40px} 100%{top:40px} }
+
+  /* DESTINATIONS SECTION */
+  .section {
+    padding: 80px 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+  }
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    letter-spacing: 2px;
+  }
+  .section-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent);
+  }
+
+  /* CATEGORIES */
+  .categories {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 40px;
+  }
+  .cat-pill {
+    padding: 8px 20px;
+    border: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--muted);
+  }
+  .cat-pill:hover, .cat-pill.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  /* DESTINATION GRID */
+  .dest-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1px;
+    background: var(--border);
+  }
+  .dest-card {
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    aspect-ratio: 3/4;
+  }
+  .dest-card img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.4,0,0.2,1);
+    filter: brightness(0.7);
+  }
+  .dest-card:hover img { transform: scale(1.06); filter: brightness(0.5); }
+  .dest-card-overlay {
+    position: absolute;
+    inset: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .dest-cat {
+    position: absolute;
+    top: 16px; left: 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 4px 8px;
+  }
+  .dest-save-btn {
+    position: absolute;
+    top: 12px; right: 12px;
+    width: 36px; height: 36px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.5);
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.2s;
+  }
+  .dest-card:hover .dest-save-btn { opacity: 1; }
+  .dest-save-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .dest-save-btn.saved { opacity: 1; border-color: var(--accent); color: var(--accent); }
+  .dest-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+  .dest-country {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .dest-card:hover .dest-card-overlay::before {
+    content: 'VIEW DETAILS →';
+    position: absolute;
+    bottom: 72px; left: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--accent);
+  }
+
+  /* ===== MY SPOTS PAGE ===== */
+  .spots-layout {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    height: calc(100vh - 56px);
+  }
+  .spots-list-panel {
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .spots-panel-header {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+  .spots-panel-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+  }
+  .spots-search {
+    width: 100%;
+    padding: 10px 16px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-bottom: 1px solid var(--accent);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+  }
+  .spots-search::placeholder { color: var(--muted); }
+
+  .spot-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .spot-row:hover { background: var(--bg2); }
+  .spot-row.active { background: var(--bg2); border-left: 2px solid var(--accent); }
+  .spot-thumb {
+    width: 56px; height: 56px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .spot-info { flex: 1; min-width: 0; }
+  .spot-row-name {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .spot-row-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .spot-row-actions {
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .spot-row:hover .spot-row-actions { opacity: 1; }
+  .spot-action-btn {
+    width: 28px; height: 28px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .spot-action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .spot-action-btn.del:hover { border-color: #e74c3c; color: #e74c3c; }
+
+  .empty-spots {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .empty-spots .big { font-family: 'Bebas Neue', sans-serif; font-size: 48px; letter-spacing: 2px; color: var(--border); }
+
+  /* MAP PANEL */
+  .spots-map-panel {
+    position: relative;
+    background: var(--bg2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #leafletMap { width: 100%; height: 100%; }
+  .map-placeholder {
+    text-align: center;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .map-placeholder .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+
+  /* ===== TRIP PLANNER PAGE ===== */
+  .trips-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr 300px;
+    height: calc(100vh - 56px);
+  }
+  .trips-sidebar {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .trips-sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: var(--bg);
+    z-index: 5;
+  }
+  .trips-sidebar-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+  }
+  .btn-new-trip {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-new-trip:hover { background: var(--accent); color: var(--bg); }
+
+  .trip-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .trip-item:hover { background: var(--bg2); }
+  .trip-item.active { background: var(--bg2); border-left: 2px solid var(--accent); }
+  .trip-item-name { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .trip-item-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+
+  /* TRIP MAIN */
+  .trips-main {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .trips-main-header {
+    padding: 24px 28px 20px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: var(--bg);
+    z-index: 5;
+  }
+  .trip-main-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .trip-main-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-transform: uppercase;
+    display: flex;
+    gap: 24px;
+  }
+  .trip-main-meta span { color: var(--accent); }
+
+  .day-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+  .day-tab {
+    padding: 12px 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: var(--muted);
+    border-right: 1px solid var(--border);
+    transition: color 0.15s;
+    position: relative;
+  }
+  .day-tab:hover { color: var(--text); }
+  .day-tab.active { color: var(--accent); }
+  .day-tab.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: var(--accent); }
+  .day-tab.add-day { color: var(--muted); font-size: 16px; padding: 12px 16px; }
+  .day-tab.add-day:hover { color: var(--accent); }
+
+  .day-spots { padding: 24px 28px; }
+  .itinerary-spot {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .spot-idx {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    color: var(--accent);
+    width: 32px;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .itinerary-spot img { width: 52px; height: 52px; object-fit: cover; flex-shrink: 0; }
+  .itinerary-info { flex: 1; }
+  .itinerary-name { font-size: 14px; font-weight: 500; }
+  .itinerary-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+  .time-slot {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--accent);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .time-slot:hover { border-color: var(--accent); }
+  .remove-from-trip {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    transition: color 0.15s;
+  }
+  .remove-from-trip:hover { color: #e74c3c; }
+
+  .no-trip-selected {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    gap: 12px;
+  }
+  .no-trip-selected .big { font-family: 'Bebas Neue', sans-serif; font-size: 64px; color: var(--border); }
+
+  /* QUICK ADD PANEL */
+  .quick-add-panel {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .qa-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: var(--bg);
+    z-index: 5;
+  }
+  .qa-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .qa-search {
+    width: 100%;
+    padding: 8px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-bottom: 1px solid var(--accent);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    outline: none;
+  }
+  .qa-search::placeholder { color: var(--muted); }
+  .qa-spot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .qa-spot:hover { background: var(--bg2); }
+  .qa-spot img { width: 44px; height: 44px; object-fit: cover; flex-shrink: 0; }
+  .qa-spot-info { flex: 1; }
+  .qa-spot-name { font-size: 12px; font-weight: 500; }
+  .qa-spot-country { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .qa-add-btn {
+    width: 28px; height: 28px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .qa-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* NEW TRIP FORM */
+  .new-trip-form {
+    padding: 20px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: none;
+  }
+  .new-trip-form.open { display: block; }
+  .form-field { margin-bottom: 14px; }
+  .form-label {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .form-input {
+    width: 100%;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .btn-sm {
+    flex: 1;
+    padding: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .btn-sm.primary { border-color: var(--accent); color: var(--accent); }
+  .btn-sm.primary:hover { background: var(--accent); color: var(--bg); }
+  .btn-sm:hover { border-color: var(--text); color: var(--text); }
+
+  /* SPOT DETAIL PAGE */
+  .spot-detail-page { max-width: 1000px; margin: 0 auto; padding: 40px 32px 80px; }
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    margin-bottom: 32px;
+    transition: color 0.15s;
+    background: none;
+    border: none;
+  }
+  .back-btn:hover { color: var(--accent); }
+  .spot-detail-hero {
+    width: 100%;
+    height: 400px;
+    object-fit: cover;
+    display: block;
+    margin-bottom: 32px;
+  }
+  .spot-detail-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(48px, 8vw, 80px);
+    letter-spacing: 2px;
+    line-height: 0.9;
+    margin-bottom: 8px;
+  }
+  .spot-detail-country {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 32px;
+  }
+  .spot-detail-body { display: grid; grid-template-columns: 1fr 320px; gap: 40px; }
+  .spot-detail-desc { font-size: 15px; line-height: 1.7; color: rgba(240,236,228,0.7); margin-bottom: 24px; }
+  .spot-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .tag {
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .notes-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .notes-textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+    line-height: 1.5;
+  }
+  .notes-textarea:focus { border-color: var(--accent); }
+  .notes-textarea::placeholder { color: var(--muted); }
+
+  .spot-detail-sidebar { min-width: 0; }
+  .detail-weather-card {
+    border: 1px solid var(--border);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .detail-weather-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .detail-weather-main {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .detail-weather-cond {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .detail-stats { border: 1px solid var(--border); padding: 20px; }
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-key { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .stat-val { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text); }
+
+  .spot-detail-actions {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 16px 32px;
+    background: rgba(10,10,10,0.9);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    z-index: 50;
+  }
+  .btn-primary {
+    padding: 12px 28px;
+    background: var(--accent);
+    border: none;
+    color: var(--bg);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-secondary {
+    padding: 12px 28px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { background: var(--accent); color: var(--bg); }
+  .btn-ghost {
+    padding: 12px 28px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+
+  /* TOAST */
+  #toastContainer {
+    position: fixed;
+    bottom: 80px;
+    right: 24px;
+    z-index: 9000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .toast {
+    padding: 14px 20px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent);
+    min-width: 260px;
+    animation: slideIn 0.3s ease-out;
+  }
+  .toast-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .toast-body { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* WEATHER THEME OVERLAY */
+  #themeOverlay {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  #themeOverlay.active { opacity: 1; pointer-events: all; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* TRIP PLANNER EMPTY */
+  .add-day-content {
+    padding: 32px 28px;
+    text-align: center;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<canvas id="weatherCanvas" aria-hidden="true"></canvas>
+<div id="themeOverlay"></div>
+<div id="toastContainer"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo" onclick="navigate('explore')">ATM<span>O</span>SPHERIC</a>
+  <ul class="nav-links">
+    <li><a href="#" id="nav-explore" class="active" onclick="navigate('explore');return false">Explore</a></li>
+    <li><a href="#" id="nav-spots" onclick="navigate('spots');return false">My Spots</a></li>
+    <li><a href="#" id="nav-trips" onclick="navigate('trips');return false">Trips</a></li>
+  </ul>
+  <div class="weather-pill" id="weatherPill" onclick="toggleWeatherSwitcher()">
+    <div class="dot" id="weatherDot"></div>
+    <span id="weatherLabel">☀ 22°C · Sunny</span>
+    <span class="weather-badge" id="weatherBadge">SOLAR</span>
+    <div class="weather-switcher" id="weatherSwitcher">
+      <div class="weather-opt" onclick="setWeather('SOLAR');event.stopPropagation()"><div class="swatch" style="background:#F5A623"></div> ☀ Solar — Sunny</div>
+      <div class="weather-opt" onclick="setWeather('RAIN');event.stopPropagation()"><div class="swatch" style="background:#4A90D9"></div> 🌧 Rain — Rainy</div>
+      <div class="weather-opt" onclick="setWeather('FROST');event.stopPropagation()"><div class="swatch" style="background:#C8E6F5"></div> ❄ Frost — Snowy</div>
+      <div class="weather-opt" onclick="setWeather('MIST');event.stopPropagation()"><div class="swatch" style="background:#8A9BA8"></div> 🌫 Mist — Cloudy</div>
+      <div class="weather-opt" onclick="setWeather('STORM');event.stopPropagation()"><div class="swatch" style="background:#9B59B6"></div> ⚡ Storm — Thunder</div>
+    </div>
+  </div>
+</nav>
+
+<!-- EXPLORE PAGE -->
+<div id="page-explore" class="page active">
+  <div class="hero">
+    <div class="hero-eyebrow" id="weatherStateLabel">☀ SOLAR MODE — LIVE WEATHER</div>
+    <h1 class="hero-title">FIND<br><span class="line2">YOUR WORLD</span></h1>
+    <p class="hero-sub">The only travel planner that feels like the weather outside. Save spots, build trips, live the atmosphere.</p>
+    <div class="search-wrap">
+      <input type="text" class="search-input" id="searchInput" placeholder="Where are you going?" oninput="handleSearch(this.value)" onblur="setTimeout(()=>closeSuggestions(),200)">
+      <span class="search-icon">→</span>
+      <div class="suggestions" id="suggestions"></div>
+    </div>
+    <div class="scroll-hint">
+      <span>Scroll to Explore</span>
+      <div class="scroll-arrow"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">DESTINATIONS</h2>
+      <span class="section-count" id="destCount">20 SPOTS</span>
+    </div>
+    <div class="categories" id="categories">
+      <div class="cat-pill active" onclick="filterCat('All')">All</div>
+      <div class="cat-pill" onclick="filterCat('City')">City</div>
+      <div class="cat-pill" onclick="filterCat('Beach')">Beach</div>
+      <div class="cat-pill" onclick="filterCat('Mountain')">Mountain</div>
+      <div class="cat-pill" onclick="filterCat('Desert')">Desert</div>
+      <div class="cat-pill" onclick="filterCat('Forest')">Forest</div>
+      <div class="cat-pill" onclick="filterCat('Arctic')">Arctic</div>
+    </div>
+    <div class="dest-grid" id="destGrid"></div>
+  </div>
+</div>
+
+<!-- MY SPOTS PAGE -->
+<div id="page-spots" class="page">
+  <div class="spots-layout">
+    <div class="spots-list-panel">
+      <div class="spots-panel-header">
+        <div class="spots-panel-title">MY SPOTS</div>
+        <input type="text" class="spots-search" placeholder="Search saved spots..." oninput="filterSpots(this.value)">
+      </div>
+      <div id="spotsList"></div>
+    </div>
+    <div class="spots-map-panel">
+      <div class="map-placeholder" id="mapPlaceholder">
+        <div class="icon">🗺</div>
+        <div>SAVE SPOTS TO SEE THEM ON MAP</div>
+      </div>
+      <div id="leafletMap" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TRIPS PAGE -->
+<div id="page-trips" class="page">
+  <div class="trips-layout">
+    <div class="trips-sidebar">
+      <div class="trips-sidebar-header">
+        <div class="trips-sidebar-title">MY TRIPS</div>
+        <button class="btn-new-trip" onclick="toggleNewTripForm()">+ NEW TRIP</button>
+      </div>
+      <div class="new-trip-form" id="newTripForm">
+        <div class="form-field">
+          <label class="form-label">Trip Name</label>
+          <input type="text" class="form-input" id="tripName" placeholder="e.g. Japan Spring 2025">
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">Start Date</label>
+            <input type="date" class="form-input" id="tripStart">
+          </div>
+          <div class="form-field">
+            <label class="form-label">End Date</label>
+            <input type="date" class="form-input" id="tripEnd">
+          </div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Travelers</label>
+          <input type="number" class="form-input" id="tripTravelers" value="2" min="1">
+        </div>
+        <div class="form-actions">
+          <button class="btn-sm" onclick="toggleNewTripForm()">Cancel</button>
+          <button class="btn-sm primary" onclick="createTrip()">Create Trip</button>
+        </div>
+      </div>
+      <div id="tripsList"></div>
+    </div>
+    <div class="trips-main" id="tripsMain">
+      <div class="no-trip-selected">
+        <div class="big">✈</div>
+        <div>Select or create a trip</div>
+      </div>
+    </div>
+    <div class="quick-add-panel">
+      <div class="qa-header">
+        <div class="qa-title">Quick Add Spot</div>
+        <input type="text" class="qa-search" placeholder="Search spots..." oninput="filterQaSpots(this.value)">
+      </div>
+      <div id="qaSpotsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SPOT DETAIL PAGE -->
+<div id="page-detail" class="page">
+  <div class="spot-detail-page" id="spotDetailContent"></div>
+  <div class="spot-detail-actions">
+    <button class="btn-primary" id="detailSaveBtn" onclick="saveCurrentDetail()">+ SAVE SPOT</button>
+    <button class="btn-secondary" onclick="addDetailToTrip()">ADD TO TRIP</button>
+    <button class="btn-ghost" onclick="copyToClipboard()">SHARE ↗</button>
+  </div>
+</div>
+
+<script>
+// ===================== DATA =====================
+const DESTINATIONS = [
+  { id:1, name:'Shibuya Crossing', city:'Tokyo', country:'Japan', category:'City', lat:35.6595, lon:139.7004, img:'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&q=80', desc:'The world\'s busiest pedestrian crossing, a symphony of human movement at every light change.', tags:['iconic','urban','photography','nightlife'] },
+  { id:2, name:'Santorini Caldera', city:'Santorini', country:'Greece', category:'Beach', lat:36.3932, lon:25.4615, img:'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=400&q=80', desc:'Perched cliffs overlooking the volcanic caldera, whitewashed walls glowing against the Aegean.', tags:['sunset','romantic','architecture','sea'] },
+  { id:3, name:'Machu Picchu', city:'Cusco Region', country:'Peru', category:'Mountain', lat:-13.1631, lon:-72.5450, img:'https://images.unsplash.com/photo-1587595431973-160d0d94add1?w=400&q=80', desc:'An Incan citadel set high in the Andes, shrouded in morning mist and ancient mystery.', tags:['ruins','UNESCO','hiking','history'] },
+  { id:4, name:'Sahara Desert', city:'Merzouga', country:'Morocco', category:'Desert', lat:31.0977, lon:-4.0137, img:'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=400&q=80', desc:'Golden dunes stretching endlessly, silence broken only by wind shaping the sand into art.', tags:['dunes','camping','stars','adventure'] },
+  { id:5, name:'Lofoten Islands', city:'Lofoten', country:'Norway', category:'Arctic', lat:68.1547, lon:13.6820, img:'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=400&q=80', desc:'Dramatic peaks rise directly from the Arctic sea, fishing villages clinging to rocky shores.', tags:['aurora','fjords','fishing','photography'] },
+  { id:6, name:'Amazon Rainforest', city:'Manaus', country:'Brazil', category:'Forest', lat:-3.4653, lon:-62.2159, img:'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=400&q=80', desc:'The lungs of the Earth — a dense, living labyrinth of biodiversity and ancient river systems.', tags:['wildlife','nature','river','biodiversity'] },
+  { id:7, name:'Amalfi Coast', city:'Amalfi', country:'Italy', category:'Beach', lat:40.6340, lon:14.6027, img:'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=400&q=80', desc:'Clifftop villages tumbling into turquoise water, lemon groves and painted boats at every turn.', tags:['coastal','food','scenic','romantic'] },
+  { id:8, name:'Kyoto Bamboo Grove', city:'Kyoto', country:'Japan', category:'Forest', lat:35.0116, lon:135.6761, img:'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=400&q=80', desc:'Towering bamboo stalks filter morning light into pale green silence.', tags:['zen','nature','temples','photography'] },
+  { id:9, name:'Petra', city:'Ma\'an', country:'Jordan', category:'Desert', lat:30.3285, lon:35.4444, img:'https://images.unsplash.com/photo-1548449112-96a38a643324?w=400&q=80', desc:'The rose-red city carved into sandstone cliffs — a wonder hidden in a desert canyon.', tags:['archaeology','UNESCO','ancient','hiking'] },
+  { id:10, name:'Banff National Park', city:'Banff', country:'Canada', category:'Mountain', lat:51.4968, lon:-115.9281, img:'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&q=80', desc:'Turquoise glacial lakes mirroring snow-capped Rockies — wilderness on an epic scale.', tags:['glaciers','wildlife','hiking','lakes'] },
+  { id:11, name:'Halong Bay', city:'Quảng Ninh', country:'Vietnam', category:'Beach', lat:20.9101, lon:107.1839, img:'https://images.unsplash.com/photo-1528127269322-539801943592?w=400&q=80', desc:'Thousands of limestone karsts rising from emerald waters in a mythical seascape.', tags:['boat','UNESCO','karsts','scenic'] },
+  { id:12, name:'Patagonia', city:'El Chaltén', country:'Argentina', category:'Mountain', lat:-49.3319, lon:-72.8864, img:'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=80', desc:'Wind-scoured peaks at the end of the world — raw, uncompromising, unforgettable.', tags:['trekking','wilderness','glaciers','adventure'] },
+  { id:13, name:'Serengeti Plains', city:'Serengeti', country:'Tanzania', category:'Desert', lat:-2.3333, lon:34.8333, img:'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=400&q=80', desc:'The greatest wildlife spectacle on Earth — the great migration in endless golden grass.', tags:['safari','wildlife','migration','photography'] },
+  { id:14, name:'Cinque Terre', city:'La Spezia', country:'Italy', category:'City', lat:44.1461, lon:9.6439, img:'https://images.unsplash.com/photo-1499678329028-101435549a4e?w=400&q=80', desc:'Five colourful villages stitched into cliffsides, connected by coastal trails and the sea.', tags:['coastal','hiking','colourful','food'] },
+  { id:15, name:'Iceland Highlands', city:'Landmannalaugar', country:'Iceland', category:'Arctic', lat:63.9826, lon:-18.0726, img:'https://images.unsplash.com/photo-1476610182048-b716b8518aae?w=400&q=80', desc:'Rhyolite mountains in impossible colours, hot springs steaming through volcanic landscape.', tags:['volcano','hiking','geothermal','aurora'] },
+  { id:16, name:'Great Barrier Reef', city:'Cairns', country:'Australia', category:'Beach', lat:-16.2864, lon:145.7180, img:'https://images.unsplash.com/photo-1559494007-9f5847c49d94?w=400&q=80', desc:'The world\'s largest living structure — a kaleidoscope of coral and marine life.', tags:['diving','UNESCO','marine','snorkeling'] },
+  { id:17, name:'Swiss Alps', city:'Zermatt', country:'Switzerland', category:'Mountain', lat:46.0207, lon:7.7491, img:'https://images.unsplash.com/photo-1531400158697-f6b4b3b8cf0c?w=400&q=80', desc:'The Matterhorn presides over a valley of chocolate-box perfection and world-class skiing.', tags:['skiing','mountains','alpine','luxury'] },
+  { id:18, name:'Bagan Temples', city:'Bagan', country:'Myanmar', category:'Desert', lat:21.1717, lon:94.8585, img:'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=400&q=80', desc:'Over 2,000 ancient temples emerging from morning mist on a dusty plain — silence made sacred.', tags:['temples','history','sunrise','archaeology'] },
+  { id:19, name:'Fjordland', city:'Te Anau', country:'New Zealand', category:'Mountain', lat:-45.4152, lon:167.7194, img:'https://images.unsplash.com/photo-1469521669194-babb45599def?w=400&q=80', desc:'Milford Sound — sheer cliff faces plunging into black water, waterfalls in constant free-fall.', tags:['fjords','UNESCO','hiking','scenic'] },
+  { id:20, name:'Namib Desert', city:'Sossusvlei', country:'Namibia', category:'Desert', lat:-24.7246, lon:15.3379, img:'https://images.unsplash.com/photo-1521651201144-634f700b36ef?w=400&q=80', desc:'The world\'s oldest desert — impossibly tall red dunes casting long shadows at golden hour.', tags:['dunes','photography','desolate','adventure'] },
+];
+
+const WEATHER_CONFIGS = {
+  SOLAR: {
+    accent:'#F5A623', bg:'#0a0a0a', bg2:'#111111', text:'#f0ece4', muted:'#666',
+    density: 40, speed: 0.5,
+    label:'☀ 22°C · Sunny', badge:'SOLAR',
+    state:'☀ SOLAR MODE — LIVE WEATHER',
+    navTint:'rgba(245,166,35,0.08)', navBorder:'rgba(245,166,35,0.22)'
+  },
+  RAIN: {
+    accent:'#4A90D9', bg:'#080c10', bg2:'#0d1117', text:'#d1dce5', muted:'#708090',
+    density: 150, speed: 1.2,
+    label:'🌧 11°C · Rainy', badge:'RAIN',
+    state:'🌧 RAIN MODE — LIVE WEATHER',
+    navTint:'rgba(74,144,217,0.10)', navBorder:'rgba(74,144,217,0.25)'
+  },
+  FROST: {
+    accent:'#C8E6F5', bg:'#08090c', bg2:'#0f1115', text:'#e6f1f7', muted:'#8a9ba8',
+    density: 100, speed: 0.8,
+    label:'❄ -2°C · Snowy', badge:'FROST',
+    state:'❄ FROST MODE — LIVE WEATHER',
+    navTint:'rgba(200,230,245,0.07)', navBorder:'rgba(200,230,245,0.2)'
+  },
+  MIST: {
+    accent:'#8A9BA8', bg:'#090a0b', bg2:'#121416', text:'#ced4d9', muted:'#707a82',
+    density: 50, speed: 0.4,
+    label:'🌫 14°C · Cloudy', badge:'MIST',
+    state:'🌫 MIST MODE — LIVE WEATHER',
+    navTint:'rgba(138,155,168,0.08)', navBorder:'rgba(138,155,168,0.2)'
+  },
+  STORM: {
+    accent:'#9B59B6', bg:'#0a0810', bg2:'#14111d', text:'#e5d8f0', muted:'#8e7aa3',
+    density: 200, speed: 2.0,
+    label:'⚡ 8°C · Thunder', badge:'STORM',
+    state:'⚡ STORM MODE — LIVE WEATHER',
+    navTint:'rgba(155,89,182,0.12)', navBorder:'rgba(155,89,182,0.28)'
+  },
+};
+
+// ===================== STATE =====================
+let currentWeather = 'SOLAR';
+let currentPage = 'explore';
+let currentFilter = 'All';
+let savedSpots = JSON.parse(localStorage.getItem('atm_spots') || '[]');
+let trips = JSON.parse(localStorage.getItem('atm_trips') || '[]');
+let currentTripId = null;
+let currentDayIdx = 0;
+let currentDetailId = null;
+let particles = [];
+let mouse = { x: -200, y: -200 };
+let canvas, ctx, animId;
+let flashTimer = 0;
+
+// ===================== CURSOR =====================
+const cursor = document.getElementById('cursor');
+const cursorRing = document.getElementById('cursor-ring');
+let cx = 0, cy = 0, rx = 0, ry = 0;
+
+document.addEventListener('mousemove', e => {
+  cx = e.clientX; cy = e.clientY;
+  mouse.x = cx; mouse.y = cy;
+  cursor.style.transform = `translate(${cx - 4}px, ${cy - 4}px)`;
+});
+setInterval(() => {
+  rx += (cx - rx) * 0.12;
+  ry += (cy - ry) * 0.12;
+  cursorRing.style.transform = `translate(${rx - 16}px, ${ry - 16}px)`;
+}, 16);
+
+document.querySelectorAll('a, button, .dest-card, .spot-row, .trip-item, .cat-pill, .weather-opt, .qa-spot').forEach(el => {
+  el.addEventListener('mouseenter', () => { cursor.style.transform += ' scale(0)'; cursorRing.style.width = '50px'; cursorRing.style.height = '50px'; });
+  el.addEventListener('mouseleave', () => { cursorRing.style.width = '32px'; cursorRing.style.height = '32px'; });
+});
+
+// ===================== CANVAS =====================
+function initCanvas() {
+  canvas = document.getElementById('weatherCanvas');
+  ctx = canvas.getContext('2d');
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  initParticles();
+  animate();
+}
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+function initParticles() {
+  particles = [];
+  const cfg = WEATHER_CONFIGS[currentWeather];
+  const count = cfg.density;
+  for (let i = 0; i < count; i++) particles.push(createParticle(cfg));
+}
+
+function createParticle(cfg) {
+  const w = canvas.width, h = canvas.height;
+  const p = { x: Math.random() * w, y: Math.random() * h, opacity: Math.random() * 0.5 + 0.1 };
+  const s = cfg.speed;
+
+  switch(currentWeather) {
+    case 'SOLAR':
+      p.type = 'ray'; p.x = w * 0.7 + Math.random() * w * 0.4; p.y = -20;
+      p.vx = -(Math.random() * 0.3 + 0.1) * s; p.vy = (Math.random() * 0.5 + 0.3) * s;
+      p.len = Math.random() * 80 + 30; p.angle = Math.PI * 0.15 + Math.random() * 0.2;
+      p.opacity = Math.random() * 0.12 + 0.03;
+      break;
+    case 'RAIN':
+      p.type = 'drop'; p.x = Math.random() * w; p.y = Math.random() * h;
+      p.vx = -0.5 * s; p.vy = (Math.random() * 8 + 6) * s;
+      p.len = Math.random() * 12 + 8; p.opacity = Math.random() * 0.4 + 0.1;
+      break;
+    case 'FROST':
+      p.type = 'flake'; p.x = Math.random() * w; p.y = Math.random() * h;
+      p.vx = Math.sin(p.y * 0.01) * 0.3 * s; p.vy = (Math.random() * 0.8 + 0.3) * s;
+      p.r = Math.random() * 2 + 1; p.drift = Math.random() * Math.PI * 2;
+      p.opacity = Math.random() * 0.6 + 0.2;
+      break;
+    case 'MIST':
+      p.type = 'wisp'; p.x = Math.random() * w; p.y = Math.random() * h;
+      p.vx = (Math.random() * 0.4 + 0.1) * s; p.vy = (Math.random() - 0.5) * 0.1 * s;
+      p.w = Math.random() * 200 + 100; p.h = Math.random() * 20 + 10;
+      p.opacity = Math.random() * 0.06 + 0.01;
+      break;
+    case 'STORM':
+      p.type = 'spark'; p.x = Math.random() * w; p.y = Math.random() * h;
+      p.vx = (Math.random() - 0.5) * 3 * s; p.vy = (Math.random() * 10 + 4) * s;
+      p.len = Math.random() * 6 + 2; p.opacity = Math.random() * 0.5 + 0.2;
+      break;
+  }
+  return p;
+}
+
+function animate() {
+  animId = requestAnimationFrame(animate);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const cfg = WEATHER_CONFIGS[currentWeather];
+  const col = hexToRgb(cfg.accent);
+
+  // Storm flash
+  if (currentWeather === 'STORM') {
+    flashTimer--;
+    if (flashTimer <= 0) { flashTimer = Math.random() * 300 + 100; }
+    if (flashTimer < 3) {
+      ctx.fillStyle = `rgba(${col.r},${col.g},${col.b},0.04)`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  particles.forEach((p, i) => {
+    // Mouse repulsion
+    const dx = p.x - mouse.x, dy = p.y - mouse.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 80) {
+      const force = (80 - dist) / 80;
+      p.x += (dx / dist) * force * 2;
+      p.y += (dy / dist) * force * 2;
+    }
+
+    ctx.strokeStyle = `rgba(${col.r},${col.g},${col.b},${p.opacity})`;
+    ctx.fillStyle = `rgba(${col.r},${col.g},${col.b},${p.opacity})`;
+    ctx.lineWidth = 1;
+
+    switch(p.type) {
+      case 'ray':
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + Math.cos(p.angle) * p.len, p.y + Math.sin(p.angle) * p.len);
+        ctx.stroke();
+        p.x += p.vx; p.y += p.vy;
+        if (p.y > canvas.height + 50) { Object.assign(p, createParticle(cfg)); p.y = -20; }
+        break;
+      case 'drop':
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + p.vx * 2, p.y + p.len);
+        ctx.stroke();
+        p.x += p.vx; p.y += p.vy;
+        if (p.y > canvas.height) { p.y = -20; p.x = Math.random() * canvas.width; }
+        break;
+      case 'flake':
+        p.drift += 0.02;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+        p.x += Math.sin(p.drift) * 0.5 + p.vx;
+        p.y += p.vy;
+        if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
+        break;
+      case 'wisp':
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, p.w, p.h, 0, 0, Math.PI * 2);
+        ctx.fill();
+        p.x += p.vx;
+        if (p.x > canvas.width + p.w) { p.x = -p.w; p.y = Math.random() * canvas.height; }
+        break;
+      case 'spark':
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + p.vx, p.y + p.len);
+        ctx.stroke();
+        p.x += p.vx; p.y += p.vy;
+        if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
+        break;
+    }
+  });
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return {r,g,b};
+}
+
+// ===================== WEATHER =====================
+function toggleWeatherSwitcher() {
+  document.getElementById('weatherSwitcher').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.weather-pill')) {
+    document.getElementById('weatherSwitcher').classList.remove('open');
+  }
+});
+
+function applyNavTheme(cfg) {
+  const nav = document.querySelector('nav');
+  // Set CSS custom properties for nav tinting
+  document.documentElement.style.setProperty('--nav-tint', cfg.navTint);
+  document.documentElement.style.setProperty('--nav-tint-border', cfg.navBorder);
+  // Quick flash effect: briefly darken, then settle
+  nav.classList.add('weather-transition');
+  setTimeout(() => nav.classList.remove('weather-transition'), 600);
+}
+
+function setWeather(state) {
+  const overlay = document.getElementById('themeOverlay');
+  overlay.classList.add('active');
+  setTimeout(() => {
+    currentWeather = state;
+    const cfg = WEATHER_CONFIGS[state];
+    
+    // Apply UI Tokens
+    document.documentElement.style.setProperty('--weather-accent', cfg.accent);
+    document.documentElement.style.setProperty('--weather-bg-primary', cfg.bg);
+    document.documentElement.style.setProperty('--weather-bg-secondary', cfg.bg2);
+    document.documentElement.style.setProperty('--weather-text-primary', cfg.text);
+    document.documentElement.style.setProperty('--weather-text-muted', cfg.muted);
+    document.documentElement.style.setProperty('--particle-density', cfg.density);
+    document.documentElement.style.setProperty('--particle-speed', cfg.speed);
+    
+    // Compatibility with old variables
+    document.documentElement.style.setProperty('--accent', cfg.accent);
+    document.documentElement.style.setProperty('--accent-dim', hexToRgba(cfg.accent, 0.15));
+    document.documentElement.style.setProperty('--bg', cfg.bg);
+    document.documentElement.style.setProperty('--bg2', cfg.bg2);
+    document.documentElement.style.setProperty('--text', cfg.text);
+    document.documentElement.style.setProperty('--muted', cfg.muted);
+
+    // Nav weather-tint tokens
+    applyNavTheme(cfg);
+    // Weather pill update
+    document.getElementById('weatherLabel').textContent = cfg.label;
+    document.getElementById('weatherBadge').textContent = cfg.badge;
+    // Hero state label
+    document.getElementById('weatherStateLabel').textContent = cfg.state;
+    // Rebuild particles for new state
+    initParticles();
+    overlay.classList.remove('active');
+  }, 1200); // Transitions at 1.2s
+  document.getElementById('weatherSwitcher').classList.remove('open');
+}
+
+function hexToRgba(hex, a) {
+  const {r,g,b} = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ===================== NAVIGATION =====================
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  const navEl = document.getElementById(`nav-${page}`);
+  if (navEl) navEl.classList.add('active');
+  currentPage = page;
+  if (page === 'spots') renderSpots();
+  if (page === 'trips') { renderTrips(); renderQaSpots(''); }
+}
+
+// ===================== EXPLORE =====================
+function renderDestinations(list) {
+  const grid = document.getElementById('destGrid');
+  document.getElementById('destCount').textContent = `${list.length} SPOTS`;
+  grid.innerHTML = list.map(d => {
+    const isSaved = savedSpots.some(s => s.id === d.id);
+    return `
+    <div class="dest-card" onclick="openDetail(${d.id})">
+      <img src="${d.img}" alt="${d.name}" loading="lazy">
+      <span class="dest-cat">${d.category}</span>
+      <button class="dest-save-btn ${isSaved ? 'saved' : ''}" onclick="event.stopPropagation();toggleSave(${d.id})" title="Save spot">
+        ${isSaved ? '✓' : '+'}
+      </button>
+      <div class="dest-card-overlay">
+        <div class="dest-name">${d.name}</div>
+        <div class="dest-country">${d.country}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterCat(cat) {
+  currentFilter = cat;
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  const filtered = cat === 'All' ? DESTINATIONS : DESTINATIONS.filter(d => d.category === cat);
+  renderDestinations(filtered);
+}
+
+let _searchWeatherTimer = null;
+function handleSearch(val) {
+  const sugg = document.getElementById('suggestions');
+  if (!val.trim()) { sugg.classList.remove('open'); return; }
+
+  // Debounced city weather fetch while typing
+  clearTimeout(_searchWeatherTimer);
+  if (val.length >= 3) {
+    _searchWeatherTimer = setTimeout(() => fetchWeatherByCity(val.trim()), 700);
+  }
+
+  const matches = DESTINATIONS.filter(d =>
+    d.name.toLowerCase().includes(val.toLowerCase()) ||
+    d.country.toLowerCase().includes(val.toLowerCase()) ||
+    d.city.toLowerCase().includes(val.toLowerCase())
+  ).slice(0, 6);
+  if (matches.length === 0) { sugg.classList.remove('open'); return; }
+  sugg.innerHTML = matches.map(d => `
+    <div class="suggestion-item" onclick="selectSuggestion(${d.id})">
+      <span>${d.name}</span>
+      <span class="country">${d.country}</span>
+    </div>`).join('');
+  sugg.classList.add('open');
+}
+
+function selectSuggestion(id) {
+  const d = DESTINATIONS.find(x => x.id === id);
+  if (d) {
+    // Fetch live weather for this destination's city
+    fetchWeatherByCity(d.city + ', ' + d.country);
+  }
+  openDetail(id);
+}
+function closeSuggestions() {
+  document.getElementById('suggestions').classList.remove('open');
+}
+
+// ===================== SAVE =====================
+function toggleSave(id) {
+  const dest = DESTINATIONS.find(d => d.id === id);
+  const idx = savedSpots.findIndex(s => s.id === id);
+  if (idx >= 0) {
+    savedSpots.splice(idx, 1);
+    toast('Spot Removed', dest.name + ' removed from your spots.');
+  } else {
+    savedSpots.push({ ...dest, savedAt: new Date().toISOString(), userNotes: '' });
+    toast('Spot Saved', dest.name + ' added to My Spots ✓');
+  }
+  localStorage.setItem('atm_spots', JSON.stringify(savedSpots));
+  const filtered = currentFilter === 'All' ? DESTINATIONS : DESTINATIONS.filter(d => d.category === currentFilter);
+  renderDestinations(filtered);
+}
+
+function saveCurrentDetail() {
+  if (currentDetailId) toggleSave(currentDetailId);
+  const btn = document.getElementById('detailSaveBtn');
+  const isSaved = savedSpots.some(s => s.id === currentDetailId);
+  btn.textContent = isSaved ? '✓ SAVED' : '+ SAVE SPOT';
+}
+
+// ===================== SPOT DETAIL =====================
+function openDetail(id) {
+  const d = DESTINATIONS.find(x => x.id === id);
+  currentDetailId = id;
+  const isSaved = savedSpots.some(s => s.id === id);
+  const saved = savedSpots.find(s => s.id === id);
+  const notes = saved ? saved.userNotes || '' : '';
+  document.getElementById('spotDetailContent').innerHTML = `
+    <button class="back-btn" onclick="navigate(currentPage === 'detail' ? 'explore' : currentPage)">← BACK</button>
+    <img src="${d.img}" alt="${d.name}" class="spot-detail-hero">
+    <div class="spot-detail-title">${d.name}</div>
+    <div class="spot-detail-country">${d.city} · ${d.country}</div>
+    <div class="spot-detail-body">
+      <div>
+        <p class="spot-detail-desc">${d.desc}</p>
+        <div class="spot-tags">${d.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+        <div class="notes-label">YOUR NOTES</div>
+        <textarea class="notes-textarea" id="spotNotes" placeholder="Your thoughts, tips, reminders..." onblur="saveNotes(${id}, this.value)">${notes}</textarea>
+      </div>
+      <div class="spot-detail-sidebar">
+        <div class="detail-weather-card">
+          <div class="detail-weather-title">WEATHER AT DESTINATION</div>
+          <div class="detail-weather-main">${Math.floor(Math.random()*20+5)}°C</div>
+          <div class="detail-weather-cond">${['Partly Cloudy','Sunny','Clear','Warm'][Math.floor(Math.random()*4)]}</div>
+        </div>
+        <div class="detail-stats">
+          <div class="stat-row"><span class="stat-key">Category</span><span class="stat-val">${d.category}</span></div>
+          <div class="stat-row"><span class="stat-key">Country</span><span class="stat-val">${d.country}</span></div>
+          <div class="stat-row"><span class="stat-key">Coordinates</span><span class="stat-val">${d.lat.toFixed(2)}, ${d.lon.toFixed(2)}</span></div>
+          <div class="stat-row"><span class="stat-key">Best Season</span><span class="stat-val">${['Spring','Summer','Autumn','Winter'][Math.floor(Math.random()*4)]}</span></div>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('detailSaveBtn').textContent = isSaved ? '✓ SAVED' : '+ SAVE SPOT';
+  navigate('detail');
+  document.getElementById('nav-explore').classList.add('active');
+}
+
+function saveNotes(id, val) {
+  const idx = savedSpots.findIndex(s => s.id === id);
+  if (idx >= 0) {
+    savedSpots[idx].userNotes = val;
+    localStorage.setItem('atm_spots', JSON.stringify(savedSpots));
+    toast('Notes Saved', 'Your notes have been updated.');
+  }
+}
+
+function addDetailToTrip() {
+  if (!currentDetailId) return;
+  if (trips.length === 0) { toast('No Trips', 'Create a trip first in the Trips tab.'); return; }
+  const trip = trips[0];
+  if (!trip.days[currentDayIdx]) trip.days[currentDayIdx] = { spots: [] };
+  const alreadyIn = trip.days[currentDayIdx].spots.some(s => s.spotId === currentDetailId);
+  if (alreadyIn) { toast('Already Added', 'This spot is already in the trip.'); return; }
+  trip.days[currentDayIdx].spots.push({ spotId: currentDetailId, timeSlot: '09:00', notes: '' });
+  localStorage.setItem('atm_trips', JSON.stringify(trips));
+  toast('Added to Trip', `${DESTINATIONS.find(d=>d.id===currentDetailId).name} added to ${trip.name}.`);
+}
+
+function copyToClipboard() {
+  navigator.clipboard?.writeText(window.location.href);
+  toast('Link Copied', 'Share link copied to clipboard.');
+}
+
+// ===================== MY SPOTS =====================
+function renderSpots(filter = '') {
+  const list = document.getElementById('spotsList');
+  let spots = savedSpots;
+  if (filter) spots = spots.filter(s => s.name.toLowerCase().includes(filter) || s.country.toLowerCase().includes(filter));
+  if (spots.length === 0) {
+    list.innerHTML = `<div class="empty-spots"><div class="big">○</div><div>No spots saved yet</div></div>`;
+    return;
+  }
+  list.innerHTML = spots.map(s => `
+    <div class="spot-row" onclick="openDetail(${s.id})">
+      <img class="spot-thumb" src="${s.img}" alt="${s.name}">
+      <div class="spot-info">
+        <div class="spot-row-name">${s.name}</div>
+        <div class="spot-row-meta">${s.country} · ${s.category}</div>
+      </div>
+      <div class="spot-row-actions">
+        <button class="spot-action-btn del" onclick="event.stopPropagation();removeSpot(${s.id})" title="Remove">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function filterSpots(val) { renderSpots(val.toLowerCase()); }
+
+function removeSpot(id) {
+  savedSpots = savedSpots.filter(s => s.id !== id);
+  localStorage.setItem('atm_spots', JSON.stringify(savedSpots));
+  renderSpots();
+  const filtered = currentFilter === 'All' ? DESTINATIONS : DESTINATIONS.filter(d => d.category === currentFilter);
+  renderDestinations(filtered);
+  toast('Spot Removed', 'Spot removed from your collection.');
+}
+
+// ===================== TRIPS =====================
+function renderTrips() {
+  const list = document.getElementById('tripsList');
+  if (trips.length === 0) {
+    list.innerHTML = `<div class="empty-spots" style="padding:32px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:2px;text-transform:uppercase;text-align:center">No trips yet</div>`;
+    return;
+  }
+  list.innerHTML = trips.map(t => `
+    <div class="trip-item ${currentTripId === t.id ? 'active' : ''}" onclick="selectTrip('${t.id}')">
+      <div class="trip-item-name">${t.name}</div>
+      <div class="trip-item-meta">${t.startDate || 'No date'} · ${t.travelers} traveler${t.travelers > 1 ? 's' : ''}</div>
+    </div>`).join('');
+}
+
+function selectTrip(id) {
+  currentTripId = id;
+  currentDayIdx = 0;
+  renderTrips();
+  renderTripMain();
+}
+
+function renderTripMain() {
+  const main = document.getElementById('tripsMain');
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) return;
+
+  const dayCount = trip.days ? trip.days.length : 1;
+  if (!trip.days) trip.days = [{ spots: [] }];
+
+  const dayTabs = Array.from({length: dayCount}, (_, i) => `
+    <div class="day-tab ${i === currentDayIdx ? 'active' : ''}" onclick="switchDay(${i})">DAY ${i+1}</div>
+  `).join('') + `<div class="day-tab add-day" onclick="addDay()">+</div>`;
+
+  const day = trip.days[currentDayIdx] || { spots: [] };
+  const spotRows = day.spots.map((s, idx) => {
+    const d = DESTINATIONS.find(x => x.id === s.spotId);
+    if (!d) return '';
+    return `
+    <div class="itinerary-spot">
+      <span class="spot-idx">${String(idx+1).padStart(2,'0')}</span>
+      <img src="${d.img}" alt="${d.name}">
+      <div class="itinerary-info">
+        <div class="itinerary-name">${d.name}</div>
+        <div class="itinerary-meta">${d.country} · ${d.category}</div>
+      </div>
+      <span class="time-slot">${s.timeSlot || '09:00'}</span>
+      <button class="remove-from-trip" onclick="removeFromTrip(${idx})">✕</button>
+    </div>`;
+  }).join('');
+
+  main.innerHTML = `
+    <div class="trips-main-header">
+      <div class="trip-main-title">${trip.name}</div>
+      <div class="trip-main-meta">
+        <span>${trip.startDate || 'TBD'} → ${trip.endDate || 'TBD'}</span>
+        <span><span>${trip.travelers}</span> travelers</span>
+        <span><span>${day.spots.length}</span> spots today</span>
+      </div>
+    </div>
+    <div class="day-tabs">${dayTabs}</div>
+    <div class="day-spots">
+      ${day.spots.length === 0 ? '<div class="add-day-content">No spots yet — add from the right panel</div>' : spotRows}
+    </div>`;
+}
+
+function switchDay(idx) {
+  currentDayIdx = idx;
+  renderTripMain();
+}
+
+function addDay() {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) return;
+  trip.days.push({ spots: [] });
+  localStorage.setItem('atm_trips', JSON.stringify(trips));
+  currentDayIdx = trip.days.length - 1;
+  renderTripMain();
+}
+
+function removeFromTrip(idx) {
+  const trip = trips.find(t => t.id === currentTripId);
+  trip.days[currentDayIdx].spots.splice(idx, 1);
+  localStorage.setItem('atm_trips', JSON.stringify(trips));
+  renderTripMain();
+  toast('Removed', 'Spot removed from this day.');
+}
+
+function toggleNewTripForm() {
+  document.getElementById('newTripForm').classList.toggle('open');
+}
+
+function createTrip() {
+  const name = document.getElementById('tripName').value.trim();
+  if (!name) { toast('Missing Name', 'Please enter a trip name.'); return; }
+  const trip = {
+    id: Date.now().toString(),
+    name,
+    startDate: document.getElementById('tripStart').value,
+    endDate: document.getElementById('tripEnd').value,
+    travelers: parseInt(document.getElementById('tripTravelers').value) || 2,
+    days: [{ spots: [] }],
+    createdAt: new Date().toISOString()
+  };
+  trips.push(trip);
+  localStorage.setItem('atm_trips', JSON.stringify(trips));
+  currentTripId = trip.id;
+  currentDayIdx = 0;
+  toggleNewTripForm();
+  document.getElementById('tripName').value = '';
+  renderTrips();
+  renderTripMain();
+  toast('Trip Created', `"${trip.name}" is ready. Start adding spots!`);
+}
+
+function renderQaSpots(filter) {
+  const list = document.getElementById('qaSpotsList');
+  let spots = savedSpots;
+  if (filter) spots = spots.filter(s => s.name.toLowerCase().includes(filter) || s.country.toLowerCase().includes(filter));
+  if (spots.length === 0) {
+    list.innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase">Save spots first</div>`;
+    return;
+  }
+  list.innerHTML = spots.map(s => `
+    <div class="qa-spot">
+      <img src="${s.img}" alt="${s.name}">
+      <div class="qa-spot-info">
+        <div class="qa-spot-name">${s.name}</div>
+        <div class="qa-spot-country">${s.country}</div>
+      </div>
+      <button class="qa-add-btn" onclick="addSpotToCurrentDay(${s.id})">+</button>
+    </div>`).join('');
+}
+
+function filterQaSpots(val) { renderQaSpots(val.toLowerCase()); }
+
+function addSpotToCurrentDay(id) {
+  if (!currentTripId) { toast('No Trip Selected', 'Select a trip first.'); return; }
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip.days[currentDayIdx]) trip.days[currentDayIdx] = { spots: [] };
+  if (trip.days[currentDayIdx].spots.some(s => s.spotId === id)) {
+    toast('Already Added', 'This spot is already in this day.'); return;
+  }
+  trip.days[currentDayIdx].spots.push({ spotId: id, timeSlot: '09:00', notes: '' });
+  localStorage.setItem('atm_trips', JSON.stringify(trips));
+  renderTripMain();
+  const d = DESTINATIONS.find(x => x.id === id);
+  toast('Spot Added', `${d.name} added to Day ${currentDayIdx + 1}.`);
+}
+
+// ===================== TOAST =====================
+function toast(title, body) {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<div class="toast-title">${title}</div><div class="toast-body">${body}</div>`;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ===================== INIT =====================
+window.addEventListener('load', () => {
+  initCanvas();
+  renderDestinations(DESTINATIONS);
+
+  // MOCK WEATHER START (API disabled for now)
+  setWeather('SOLAR');
+  toast('Atmospheric Load', 'Mock weather system initialized. Manual override active.');
+});
+
+</script>
+</body>
+</html>
