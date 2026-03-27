@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlanIt — Your Itinerary</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/assets/results-BC3U1rdK.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/db-cpSSuCWQ.js">
+  <link rel="modulepreload" crossorigin href="/assets/index-CoOc8xI4.js">
+  <link rel="stylesheet" crossorigin href="/assets/db-BgFW6r89.css">
+  <link rel="stylesheet" crossorigin href="/assets/results-BekNjfQT.css">
+</head>
+<body>
+  <div id="cursor"></div>
+  <div id="cursor-ring"></div>
+
+  <nav class="navbar glass-panel">
+    <a href="/" class="logo">PLAN<span class="text-accent">IT</span></a>
+    <div style="display:flex; gap:16px; align-items:center;">
+      <a href="/profile.html" class="nav-link">My Trips</a>
+      <a href="/auth.html" class="nav-link nav-cta">Sign In</a>
+    </div>
+  </nav>
+
+  <main class="results-main">
+    <!-- HEADER -->
+    <div id="results-header" class="results-header">
+      <div id="results-eyebrow" class="results-eyebrow">AI GENERATED ITINERARY</div>
+      <h1 id="results-title" class="results-hero-title">Loading...</h1>
+      <div id="results-meta" class="results-meta"></div>
+    </div>
+
+    <!-- LOADING STATE -->
+    <div id="loading-state" class="loading-state">
+      <div class="spinner"></div>
+      <p class="loading-text">PlanIt AI is curating your perfect trip...</p>
+    </div>
+
+    <!-- RESULTS GRID (hidden until loaded) -->
+    <div id="results-grid" class="results-grid hidden">
+
+      <section class="result-section">
+        <div class="section-label">
+          <span class="section-icon">🏛️</span>
+          <h2>FAMOUS PLACES</h2>
+        </div>
+        <div id="places-grid" class="cards-grid"></div>
+      </section>
+
+      <section class="result-section">
+        <div class="section-label">
+          <span class="section-icon">🛏️</span>
+          <h2>STAYS</h2>
+        </div>
+        <div id="stays-grid" class="cards-grid"></div>
+      </section>
+
+      <section class="result-section">
+        <div class="section-label">
+          <span class="section-icon">🍽️</span>
+          <h2>RESTAURANTS</h2>
+        </div>
+        <div id="restaurants-grid" class="cards-grid"></div>
+      </section>
+
+    </div>
+
+    <!-- SAVE BAR (fixed at bottom) -->
+    <div id="save-bar" class="save-bar hidden">
+      <div class="save-bar-inner">
+        <span class="save-bar-text">Happy with this itinerary?</span>
+        <button id="save-trip-btn" class="btn-primary">SAVE TO MY TRIPS ✦</button>
+      </div>
+    </div>
+
+  </main>
+
+</body>
+</html>

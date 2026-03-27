@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auth — PlanIt Travel Explorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/assets/auth-DyBztcge.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/db-cpSSuCWQ.js">
+  <link rel="stylesheet" crossorigin href="/assets/db-BgFW6r89.css">
+  <link rel="stylesheet" crossorigin href="/assets/auth-CEqL9atG.css">
+</head>
+<body>
+
+  <div id="cursor"></div>
+  <div id="cursor-ring"></div>
+
+  <!-- NAVIGATION -->
+  <nav class="navbar">
+    <a href="/" class="nav-logo">PLAN<span>IT</span></a>
+    <ul class="nav-links">
+      <li><a href="/">Explore</a></li>
+    </ul>
+  </nav>
+
+  <main class="auth-layout">
+    <div class="auth-image-panel">
+      <!-- Background handled in CSS -->
+      <div class="image-content">
+        <div class="eyebrow">BEGIN YOUR JOURNEY</div>
+        <h2>Unlock AI Curated Itineraries</h2>
+        <p>Sign in to save your favorite spots, edit trips, and access your entire travel history across devices.</p>
+      </div>
+    </div>
+    
+    <div class="auth-form-panel">
+      <div class="auth-form-container glass-panel">
+        <h1 class="auth-title" id="form-title">Welcome Back</h1>
+        <p class="auth-subtitle" id="form-subtitle">Sign in to continue your journey.</p>
+        
+        <form id="auth-form" class="mt-4" novalidate>
+
+          <!-- Full Name (signup only) -->
+          <div class="form-group hidden" id="name-group">
+            <label for="fullname" class="field-label">Full Name</label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </span>
+              <input type="text" id="fullname" name="fullname" placeholder="e.g. Jane Doe" autocomplete="name">
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label for="email" class="field-label">Email Address</label>
+            <div class="input-wrap" id="email-wrap">
+              <span class="input-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              </span>
+              <input type="email" id="email" name="email" required placeholder="name@example.com" autocomplete="email" oninput="validateEmail(this)">
+              <span class="input-status-icon" id="email-status"></span>
+            </div>
+            <p class="field-hint" id="email-hint"></p>
+          </div>
+
+          <!-- Password -->
+          <div class="form-group" id="password-group">
+            <label for="password" class="field-label">Password</label>
+            <div class="input-wrap" id="password-wrap">
+              <span class="input-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </span>
+              <input type="password" id="password" name="password" required placeholder="Create a strong password" autocomplete="current-password" oninput="validatePassword(this.value)">
+              <button type="button" class="toggle-pw" id="toggle-pw" onclick="togglePasswordVisibility()" title="Show/hide password" aria-label="Toggle password visibility">
+                <svg id="pw-eye-open" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg id="pw-eye-closed" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+              </button>
+            </div>
+
+            <!-- Strength Meter (signup only) -->
+            <div class="pw-strength-wrap hidden" id="pw-strength-wrap">
+              <div class="pw-strength-bar">
+                <div class="pw-strength-fill" id="pw-strength-fill"></div>
+              </div>
+              <span class="pw-strength-label" id="pw-strength-label">Too weak</span>
+            </div>
+
+            <!-- Checklist requirements (signup only) -->
+            <ul class="pw-checklist hidden" id="pw-checklist">
+              <li id="chk-len"  class="chk-item"><span class="chk-dot"></span> At least 8 characters</li>
+              <li id="chk-upper" class="chk-item"><span class="chk-dot"></span> One uppercase letter (A–Z)</li>
+              <li id="chk-num"  class="chk-item"><span class="chk-dot"></span> One number (0–9)</li>
+              <li id="chk-sym"  class="chk-item"><span class="chk-dot"></span> One special character (!@#$…)</li>
+            </ul>
+
+            <!-- Suggestion tip -->
+            <p class="pw-suggestion hidden" id="pw-suggestion"></p>
+          </div>
+
+          <button type="submit" class="btn-primary w-full mt-4" id="auth-btn">
+            <span id="auth-btn-text">SIGN IN</span> <span class="arrow">→</span>
+          </button>
+        </form>
+
+        <p class="auth-toggle mt-4" id="toggle-auth">
+          Don't have an account? <a href="#" id="switch-mode">Sign up</a>
+        </p>
+      </div>
+    </div>
+  </main>
+
+</body>
+</html>
